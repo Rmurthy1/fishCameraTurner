@@ -53,13 +53,13 @@ unsigned long lastTime = 0;
 unsigned long timerDelay = 5000;
 
 String serverNameForPosting = "https://posttestserver.dev/p/giorqm64yp8a4a6m/post";
-const char* serverName = "https://rahulwebsite-d6b05-default-rtdb.firebaseio.com/rotations.json";
+String serverName = DATABASE_ROOT;
 
 WiFiClientSecure client;
 
 String sensorReadings;
 float sensorReadingsArr[3];
-String httpGETRequest(const char* serverName);
+String httpGETRequest(String serverName);
 
 void fetchData() {
   //Send an HTTP POST request every 10 minutes
@@ -77,12 +77,13 @@ void fetchData() {
   }
 }
 
-String httpGETRequest(const char* serverName) {
+String httpGETRequest(String serverName) {
   WiFiClientSecure client;
   client.setInsecure();
   HTTPClient http;
     
   // Your Domain name with URL path or IP address with path
+  serverName += "/rotations.json";
   http.begin(client, serverName);
   
   // If you need Node-RED/server authentication, insert user and password below
