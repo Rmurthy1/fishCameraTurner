@@ -85,8 +85,8 @@ void fetchData() {
   }
 }
 
-// function to send HTTP POST request
-// call this after we recieve and parse data, making sure the timestamp is greater than zero
+// function to send HTTP POST request (we use a put request because we dont want children)
+// called by parseData
 void httpsPOSTRequest(String serverName, String input) {
   WiFiClientSecure client;
   client.setInsecure();
@@ -108,7 +108,7 @@ void httpsPOSTRequest(String serverName, String input) {
   // Free resources
   http.end();
 }
-// called by fetchdata
+// called by fetchData
 String httpGETRequest(String serverName) {
   WiFiClientSecure client;
   client.setInsecure();
@@ -257,6 +257,7 @@ void parseData(String payload) {
 
 }
 
+// plug in a motor to test this, battery pack it maybe
 void moveCameraStepper(long num) {
 
 }
@@ -267,7 +268,7 @@ void updateFirebase(int data, int time){
   payload += "\"num\":";
   payload += data;
   payload += ",";
-  payload += "\"time\":";//{\".sv\": \"timestamp\"}}";
+  payload += "\"time\":";
   payload += time;
   payload += "}";
 
@@ -315,6 +316,7 @@ void loop() {
   }
   // Move the motor one step
   myStepper.run();
+  cameraStepper.run();
   // check camera stepper
   //sendDataToServer();
   fetchData();
@@ -372,6 +374,3 @@ void loop() {
 }
     */
 
-void firebaseSetup() {
-  
-}
