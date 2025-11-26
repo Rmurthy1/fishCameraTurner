@@ -57,18 +57,26 @@ String serverName = DATABASE_ROOT;
 
 WiFiClientSecure client;
 
-String sensorReadings;
-float sensorReadingsArr[3];
 String httpGETRequest(String serverName);
+void updateFirebase(int data, int time);
+void moveCameraStepper(long num);
 
+
+DynamicJsonDocument doc(1024);
+
+int timeFromServer = -1;
+int numFromServer = 0;
+
+void parseData(String payload);
+
+// called once per loop
 void fetchData() {
-  //Send an HTTP POST request every 10 minutes
   if ((millis() - lastTime) > timerDelay) {
-    //Check WiFi connection status
     if(WiFi.status()== WL_CONNECTED){
-              
-      sensorReadings = httpGETRequest(serverName);
-      Serial.println(sensorReadings);
+      String data = httpGETRequest(serverName);
+      Serial.println("sensor readings: " + data);
+      
+      parseData(data);
     }
     else {
       Serial.println("WiFi Disconnected");
@@ -77,21 +85,39 @@ void fetchData() {
   }
 }
 
+// function to send HTTP POST request
+// call this after we recieve and parse data, making sure the timestamp is greater than zero
+void httpsPOSTRequest(String serverName, String input) {
+  WiFiClientSecure client;
+  client.setInsecure();
+  HTTPClient http;
+
+  // Your Domain name with URL path or IP address with path
+  serverName += "/rotations.json";
+  http.begin(client, serverName);
+  int httpResponseCode = http.PUT(input);
+
+  if (httpResponseCode>0) {
+    Serial.print("HTTP Response code: ");
+    Serial.println(httpResponseCode);
+  }
+  else {
+    Serial.print("Error code: ");
+    Serial.println(httpResponseCode);
+  }
+  // Free resources
+  http.end();
+}
+// called by fetchdata
 String httpGETRequest(String serverName) {
   WiFiClientSecure client;
   client.setInsecure();
   HTTPClient http;
-    
   // Your Domain name with URL path or IP address with path
   serverName += "/rotations.json";
   http.begin(client, serverName);
   
-  // If you need Node-RED/server authentication, insert user and password below
-  //http.setAuthorization("REPLACE_WITH_SERVER_USERNAME", "REPLACE_WITH_SERVER_PASSWORD");
-  
-  // Send HTTP POST request
   int httpResponseCode = http.GET();
-  
   String payload = "{}"; 
   
   if (httpResponseCode>0) {
@@ -108,7 +134,7 @@ String httpGETRequest(String serverName) {
 
   return payload;
 }
-
+// test function, using a test endpoint
 void sendDataToServer() {
   //Send an HTTP POST request every 10 minutes
   if ((millis() - lastTime) > timerDelay) {
@@ -177,6 +203,79 @@ void setup() {
 
 bool leftPressed = true;
 bool rightPressed = true;
+
+// we have recieved the payload, now we extract the data and act on it
+void parseData(String payload) {
+  deserializeJson(doc, payload);
+  JsonObject obj = doc.as<JsonObject>();
+  long num = obj["num"];
+  long time = obj["time"];
+  Serial.println("num: " + String(num));
+  Serial.println("time: " + String(time));
+  bool newData = false;
+
+  bool skip = false;
+
+  if (num == 0) {
+    Serial.println("zero num");
+    numFromServer = 0;
+    skip == true;
+  }
+  if (time == 0) {
+    Serial.println("zero time");
+    timeFromServer = 0;
+    skip == true;
+  }
+  
+
+  // store time and num 
+  //check against stored time and num first tho
+  if (timeFromServer == time) {
+    // we have seen it before so we can skip
+  } else if (skip == false) {
+    timeFromServer = time;
+    numFromServer = num;
+    newData = true;
+    Serial.println("new data stored");
+  }
+
+  if (newData == true) {
+    // send the data to the move function
+    // update the server with zero time, zero num
+    moveCameraStepper(numFromServer);
+    updateFirebase(0, 0);
+
+  }
+
+  // check time and num
+    // if time is 0 then do nothing, otherwise we do stuff
+    // if move steps in num if we do stuff
+    // then send 0 and 0 to time and num
+    // store time and num 
+    // send steps to actor functions
+    // send data to firebase
+
+}
+
+void moveCameraStepper(long num) {
+
+}
+
+void updateFirebase(int data, int time){
+  // prepare payload
+  String payload = "{";
+  payload += "\"num\":";
+  payload += data;
+  payload += ",";
+  payload += "\"time\":";//{\".sv\": \"timestamp\"}}";
+  payload += time;
+  payload += "}";
+
+  Serial.println(payload);
+
+  httpsPOSTRequest(serverName, payload);
+
+}
 
 void loop() {
   leftButtonState = digitalRead(leftButtonPin);
